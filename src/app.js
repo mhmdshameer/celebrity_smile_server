@@ -4,6 +4,7 @@ import connectDB from "./config/db.js";
 import cors from "cors";
 import doctorRouter from "./routes/doctor.js";
 import uploadRouter from "./routes/upload.js";
+import serviceRouter from "./routes/service.js";
 
 dotenv.config();
 
@@ -21,5 +22,6 @@ app.get("/", (req, res) => {
 
 app.use("/doctor", doctorRouter)
 app.use("/upload", uploadRouter)
+app.use("/service", serviceRouter)
 
 export default app

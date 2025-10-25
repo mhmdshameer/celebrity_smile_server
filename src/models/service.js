@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const serviceSchema = new mongoose.Schema({
     service:{type:String,required:true},
     serviceAr:{type:String,required:true},

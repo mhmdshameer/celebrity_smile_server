@@ -5,6 +5,7 @@ import cors from "cors";
 import doctorRouter from "./routes/doctor.js";
 import uploadRouter from "./routes/upload.js";
 import serviceRouter from "./routes/service.js";
+import offerRouter from "./routes/offer.js";
 
 dotenv.config();
 
@@ -23,5 +24,6 @@ app.get("/", (req, res) => {
 app.use("/doctor", doctorRouter)
 app.use("/upload", uploadRouter)
 app.use("/service", serviceRouter)
+app.use("/offer", offerRouter)
 
 export default app

@@ -5,7 +5,10 @@ const serviceSchema = new mongoose.Schema({
     serviceAr:{type:String,required:true},
     description:{type:String,required:true},
     descriptionAr:{type:String,required:true},
-    servicePrice:{type:Number,required:true},
+    serviceImage:{
+    url: { type: String, required: true },
+    public_id: { type: String, required: true }
+  },
     slug:{type:String,unique:true},
 },
 {timestamps:true});

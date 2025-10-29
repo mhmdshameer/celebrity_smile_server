@@ -7,6 +7,7 @@ import uploadRouter from "./routes/upload.js";
 import serviceRouter from "./routes/service.js";
 import offerRouter from "./routes/offer.js";
 import blogRouter from "./routes/blog.js";
+import authRouter from "./routes/auth.js";
 
 dotenv.config();
 
@@ -27,5 +28,5 @@ app.use("/upload", uploadRouter)
 app.use("/service", serviceRouter)
 app.use("/offer", offerRouter)
 app.use("/blog", blogRouter)
-
+app.use("/auth", authRouter)
 export default app

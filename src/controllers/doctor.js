@@ -93,24 +93,37 @@ export const updateDoctor = async (req, res) => {
                 // Upload new image to Cloudinary
                 const result = await cloudinary.uploader.upload(req.file.path, {
                     folder: "celebrity_smile/doctors",
+                    resource_type: 'auto'
                 });
 
                 // Remove local file after upload
-                fs.unlinkSync(req.file.path);
+                fs.unlink(req.file.path, (err) => {
+                    if (err) console.error('Error removing temp file:', err);
+                });
 
-                // Delete old image if exists
-                if (currentDoctor?.image?.public_id) {
-                    await cloudinary.uploader.destroy(currentDoctor.image.public_id)
-                        .catch(err => console.error('Error deleting old image:', err));
-                }
-
+                // Set the new image data
                 updateData.image = {
                     url: result.secure_url,
                     public_id: result.public_id,
                 };
+
+                // Delete old image if it exists and is different from the new one
+                if (currentDoctor?.image?.public_id && 
+                    currentDoctor.image.public_id !== result.public_id) {
+                    await cloudinary.uploader.destroy(currentDoctor.image.public_id)
+                        .then(() => console.log('Old image deleted successfully'))
+                        .catch(err => console.error('Error deleting old image:', err));
+                }
             } catch (uploadError) {
                 console.error('Error uploading image:', uploadError);
-                return res.status(500).json({ message: 'Error uploading image' });
+                // Clean up the uploaded file if it exists
+                if (req.file?.path) {
+                    fs.unlink(req.file.path, () => {});
+                }
+                return res.status(500).json({ 
+                    message: 'Error uploading image',
+                    error: uploadError.message 
+                });
             }
         } else if (imageUrl && imagePublicId) {
             console.log('Using existing image from client:', { imageUrl, imagePublicId });
@@ -135,6 +148,11 @@ export const updateDoctor = async (req, res) => {
         
         if (!doctor) {
             console.error('Doctor not found with ID:', req.params.id);
+            // If we uploaded a new image but failed to update the doctor, clean up
+            if (req.file && updateData.image?.public_id) {
+                await cloudinary.uploader.destroy(updateData.image.public_id)
+                    .catch(err => console.error('Error cleaning up uploaded image:', err));
+            }
             return res.status(404).json({ message: 'Doctor not found' });
         }
         

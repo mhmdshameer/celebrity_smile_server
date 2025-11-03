@@ -54,8 +54,16 @@ export const getDoctor = async (req, res) => {
 
 export const updateDoctor = async (req, res) => {
     try {
+        console.log('Update request received:', {
+            params: req.params,
+            body: req.body,
+            file: req.file ? 'File received' : 'No file received'
+        });
+
         const { name, nameAr, specialties, specialtiesAr, imageUrl, imagePublicId } = req.body;
         const updateData = { name, nameAr };
+        
+        console.log('Initial update data:', updateData);
 
         // First get the current doctor to handle image updates
         const currentDoctor = await Doctor.findById(req.params.id);
@@ -77,7 +85,9 @@ export const updateDoctor = async (req, res) => {
         }
 
         // Handle image update
+        console.log('Processing image update...');
         if (req.file) {
+            console.log('New file detected, uploading to Cloudinary...');
             // If a new file is uploaded
             try {
                 // Upload new image to Cloudinary
@@ -103,16 +113,20 @@ export const updateDoctor = async (req, res) => {
                 return res.status(500).json({ message: 'Error uploading image' });
             }
         } else if (imageUrl && imagePublicId) {
+            console.log('Using existing image from client:', { imageUrl, imagePublicId });
             // If no new file but we have image URL and public_id from the client
             updateData.image = {
                 url: imageUrl,
                 public_id: imagePublicId
             };
         } else {
+            console.log('No image changes, keeping existing image');
             // If no image data is provided, keep the existing image
             updateData.image = currentDoctor.image;
         }
 
+        console.log('Final update data:', JSON.stringify(updateData, null, 2));
+        
         const doctor = await Doctor.findByIdAndUpdate(
             req.params.id,
             updateData,
@@ -120,15 +134,23 @@ export const updateDoctor = async (req, res) => {
         );
         
         if (!doctor) {
+            console.error('Doctor not found with ID:', req.params.id);
             return res.status(404).json({ message: 'Doctor not found' });
         }
         
+        console.log('Doctor updated successfully:', doctor);
+        
         res.status(200).json(doctor);
     } catch (error) {
-        console.error('Error updating doctor:', error);
+        console.error('Error updating doctor:', {
+            message: error.message,
+            stack: error.stack,
+            error: error
+        });
         res.status(500).json({ 
-            message: 'Error updating doctor',
-            error: error.message 
+            message: 'Error updating doctor', 
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

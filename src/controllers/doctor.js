@@ -54,7 +54,7 @@ export const getDoctor = async (req, res) => {
 
 export const updateDoctor = async (req, res) => {
     try {
-        const { name, nameAr, specialties, specialtiesAr } = req.body;
+        const { name, nameAr, specialties, specialtiesAr, imageUrl, imagePublicId } = req.body;
         const updateData = { name, nameAr };
 
         // First get the current doctor to handle image updates
@@ -67,17 +67,18 @@ export const updateDoctor = async (req, res) => {
         if (specialties !== undefined) {
             updateData.specialties = Array.isArray(specialties) 
                 ? specialties 
-                : specialties.split(',').map(s => s.trim());
+                : (typeof specialties === 'string' ? specialties.split(',').map(s => s.trim()) : []);
         }
 
         if (specialtiesAr !== undefined) {
             updateData.specialtiesAr = Array.isArray(specialtiesAr) 
                 ? specialtiesAr 
-                : specialtiesAr.split(',').map(s => s.trim());
+                : (typeof specialtiesAr === 'string' ? specialtiesAr.split(',').map(s => s.trim()) : []);
         }
 
-        // Handle image update if file is uploaded
+        // Handle image update
         if (req.file) {
+            // If a new file is uploaded
             try {
                 // Upload new image to Cloudinary
                 const result = await cloudinary.uploader.upload(req.file.path, {
@@ -99,11 +100,16 @@ export const updateDoctor = async (req, res) => {
                 };
             } catch (uploadError) {
                 console.error('Error uploading image:', uploadError);
-                // If image upload fails, keep the existing image
-                updateData.image = currentDoctor.image;
+                return res.status(500).json({ message: 'Error uploading image' });
             }
+        } else if (imageUrl && imagePublicId) {
+            // If no new file but we have image URL and public_id from the client
+            updateData.image = {
+                url: imageUrl,
+                public_id: imagePublicId
+            };
         } else {
-            // If no new image is provided, keep the existing image
+            // If no image data is provided, keep the existing image
             updateData.image = currentDoctor.image;
         }
 

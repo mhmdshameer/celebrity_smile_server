@@ -57,14 +57,20 @@ export const updateDoctor = async (req, res) => {
         const { name, nameAr, specialties, specialtiesAr } = req.body;
         const updateData = { name, nameAr };
 
+        // First get the current doctor to handle image updates
+        const currentDoctor = await Doctor.findById(req.params.id);
+        if (!currentDoctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+
         // Handle specialties
-        if (specialties) {
+        if (specialties !== undefined) {
             updateData.specialties = Array.isArray(specialties) 
                 ? specialties 
                 : specialties.split(',').map(s => s.trim());
         }
 
-        if (specialtiesAr) {
+        if (specialtiesAr !== undefined) {
             updateData.specialtiesAr = Array.isArray(specialtiesAr) 
                 ? specialtiesAr 
                 : specialtiesAr.split(',').map(s => s.trim());
@@ -72,26 +78,33 @@ export const updateDoctor = async (req, res) => {
 
         // Handle image update if file is uploaded
         if (req.file) {
-            // First get the current doctor to delete old image
-            const currentDoctor = await Doctor.findById(req.params.id);
-            
-            // Upload new image to Cloudinary
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: "celebrity_smile/doctors",
-            });
+            try {
+                // Upload new image to Cloudinary
+                const result = await cloudinary.uploader.upload(req.file.path, {
+                    folder: "celebrity_smile/doctors",
+                });
 
-            // Remove local file after upload
-            fs.unlinkSync(req.file.path);
+                // Remove local file after upload
+                fs.unlinkSync(req.file.path);
 
-            // Delete old image if exists
-            if (currentDoctor?.image?.public_id) {
-                await cloudinary.uploader.destroy(currentDoctor.image.public_id);
+                // Delete old image if exists
+                if (currentDoctor?.image?.public_id) {
+                    await cloudinary.uploader.destroy(currentDoctor.image.public_id)
+                        .catch(err => console.error('Error deleting old image:', err));
+                }
+
+                updateData.image = {
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                };
+            } catch (uploadError) {
+                console.error('Error uploading image:', uploadError);
+                // If image upload fails, keep the existing image
+                updateData.image = currentDoctor.image;
             }
-
-            updateData.image = {
-                url: result.secure_url,
-                public_id: result.public_id,
-            };
+        } else {
+            // If no new image is provided, keep the existing image
+            updateData.image = currentDoctor.image;
         }
 
         const doctor = await Doctor.findByIdAndUpdate(

@@ -54,16 +54,65 @@ export const getDoctor = async (req, res) => {
 
 export const updateDoctor = async (req, res) => {
     try {
+        const { name, nameAr, specialties, specialtiesAr } = req.body;
+        const updateData = { name, nameAr };
+
+        // Handle specialties
+        if (specialties) {
+            updateData.specialties = Array.isArray(specialties) 
+                ? specialties 
+                : specialties.split(',').map(s => s.trim());
+        }
+
+        if (specialtiesAr) {
+            updateData.specialtiesAr = Array.isArray(specialtiesAr) 
+                ? specialtiesAr 
+                : specialtiesAr.split(',').map(s => s.trim());
+        }
+
+        // Handle image update if file is uploaded
+        if (req.file) {
+            // First get the current doctor to delete old image
+            const currentDoctor = await Doctor.findById(req.params.id);
+            
+            // Upload new image to Cloudinary
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: "celebrity_smile/doctors",
+            });
+
+            // Remove local file after upload
+            fs.unlinkSync(req.file.path);
+
+            // Delete old image if exists
+            if (currentDoctor?.image?.public_id) {
+                await cloudinary.uploader.destroy(currentDoctor.image.public_id);
+            }
+
+            updateData.image = {
+                url: result.secure_url,
+                public_id: result.public_id,
+            };
+        }
+
         const doctor = await Doctor.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true, runValidators: true }
-        )
-        res.status(200).json(doctor)
+        );
+        
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+        
+        res.status(200).json(doctor);
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        console.error('Error updating doctor:', error);
+        res.status(500).json({ 
+            message: 'Error updating doctor',
+            error: error.message 
+        });
     }
-}
+};
 
 export const deleteDoctor = async (req, res) => {
     try {
